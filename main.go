@@ -1,82 +1,59 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"math/rand"
-	"sync"
+	"reflect"
 )
 
-// Задание №1: Напишите программу, которая запускает n потоков и дожидается завершения их всех:
+// 1. Написать функцию, которая принимает на вход структуру in
+// (struct или кастомную struct) и values map[string]interface{}
+// (key - название поля структуры, которому нужно присвоить value этой мапы).
+// Необходимо по значениям из мапы изменить входящую структуру in с помощью пакета reflect.
 
-// func main() {
-// 	var wg = sync.WaitGroup{}
-// 	for i := 0; i < 10; i++ {
-// 		wg.Add(1)
-// 		go func(i int) {
-// 			defer wg.Done()
-// 			fmt.Printf("This is the %d routine\n", i)
-// 		}(i)
-// 	}
-// 	wg.Wait()
-// 	fmt.Println("main done")
-// }
-
-// Задание №3: Протестируйте производительность операций чтения и записи на множестве действительных чисел,
-//  безопасность которого обеспечивается sync.Mutex и sync.RWMutex для разных вариантов использования:
-//  10% запись, 90% чтение; 50% запись, 50% чтение; 90% запись, 10% чтение
-
-var (
-	globalMap   = map[int]int{}
-	globalMapMu = sync.Mutex{}
-
-	globalRWMap   = map[int]int{}
-	globalMapRWMu = sync.RWMutex{}
-)
-
-func classicMutex(arg float32) {
-	wg := sync.WaitGroup{}
-
-	for i := 0; i < 1000; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			globalMapMu.Lock()
-			defer globalMapMu.Unlock()
-
-			if rand.Float32() < arg/100 {
-				globalMap[i] = i * 100
-				return
-			}
-			fmt.Println(globalMap[i])
-		}(i)
-	}
-
-	wg.Wait()
-
-	fmt.Println("main done", len(globalMap))
+type Client struct {
+	Username string
+	Number   string
 }
 
-func rwMutex(arg float32) {
-	wg := sync.WaitGroup{}
-
-	for i := 0; i < 1000; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-
-			if rand.Float32() < arg/100 {
-				globalMapMu.Lock()
-				globalMap[i] = i * 100
-				globalMapMu.Unlock()
-				return
-			}
-			globalMapRWMu.RLock()
-			fmt.Println(globalRWMap[i])
-			globalMapRWMu.RUnlock()
-		}(i)
+func main() {
+	u := &Client{}
+	m := map[string]interface{}{
+		// "Username": "client",
+		// "Number":   1,
+		// "Hello":    "good",
 	}
 
-	wg.Wait()
+	err := myFunc(u, m)
 
-	fmt.Println("main done")
+	if err != nil {
+		fmt.Printf("%v+", err)
+	}
+
+	fmt.Println(u)
+}
+
+func myFunc(str interface{}, m map[string]interface{}) error {
+
+	if m == nil {
+		return errors.New("arg is nil")
+	}
+
+	strValue := reflect.ValueOf(str)
+	strElem := strValue.Elem()
+
+	for key, _ := range m {
+
+		if strElem.FieldByName(key).IsValid() {
+			mapValue := reflect.ValueOf(m[key])
+			strElemField := strElem.FieldByName(key)
+
+			if strElemField.Kind() == mapValue.Kind() {
+				strElemField.Set(mapValue)
+			}
+
+		}
+	}
+
+	return nil
 }
